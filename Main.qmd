@@ -1,0 +1,1073 @@
+---
+title: "R User Group Singapore Meetup"
+subtitle: "Network Analysis with tidygraph and ggraph in R"
+date: "29 November, 2024"
+author: "Naman Agrawal"
+institute: "National University of Singapore"
+format: 
+  revealjs:
+    theme: simple
+html:
+  toc: true
+  toc_depth: 2
+---
+
+## Table of Contents
+
+1. Introduction to Network Analysis and Graphs
+
+2. Basics of tidygraph
+
+3. Visualization with ggraph
+
+4. An Example
+
+5. Trees in tidygraph (if time)
+
+
+
+# Introduction to Network Analysis and Graphs
+
+## What is Network Analysis?
+
+Network analysis is a method used to study and understand the relationships and interactions between entities within a system.
+
+- **Examples:**
+  - Understanding social networks (e.g., identifying influencers on social media).
+  - Analyzing biological systems such as protein interactions.
+  
+
+## How Network Analysis Differs from Tabular Data Analysis
+
+<br>
+
+| **Aspect**       | **Tabular Data**          | **Network Data**          |
+|-------------------|---------------------------|---------------------------|
+| **Focus**        | Observations              | Relationships             |
+| **Data Structure**| Rows and Columns         | Nodes and Edges           |
+| **Visualization**| Scatter plots, histograms | Graph diagrams (node-link)|
+
+---
+
+  
+## Importance of Network Analysis? {.smaller}
+
+
+::: columns 
+::: {.column width="30%"}
+::: {layout="[[-1], [1], [-1]]"}
+- Helps uncover hidden patterns.
+- Optimizes decision-making in complex systems.
+- Identifies influential entities and critical connections.
+::: 
+:::
+
+::: {.column width="70%"}
+::: {layout="[[-1], [1], [-1]]"}
+![https://www.nature.com/articles/s41598-022-09564-4](imgs/img1.png)
+::: 
+:::
+:::
+
+
+
+
+
+---
+
+
+
+## Introduction to Graphs
+
+A graph is a mathematical structure used to model pairwise relationships between entities.
+
+### Components of a Graph
+1. **Nodes (Vertices)**: Represent entities.
+2. **Edges (Links)**: Represent relationships between nodes.
+
+A graph may also have **attributes**, which are dditional data about nodes or edges (e.g., weights, labels).
+
+## Introduction to Graphs
+
+```{r}
+#| fig-width: 10
+#| fig-height: 4.5
+library(igraph)
+library(tidygraph)
+library(ggraph)
+library(tidyverse)
+set.seed(7)
+graph <- sample_gnp(n = 10, p = 0.3, directed = FALSE)  # Random graph
+gr = as_tbl_graph(graph) %>%
+  mutate(group = sample(letters[1:3], vcount(graph), replace = TRUE),
+         size = sample(5:8, vcount(graph), replace = TRUE)) %>%
+  activate(edges) %>%
+  mutate(weights = sample(5:10, ecount(graph), replace = TRUE)) 
+gr %>%
+  ggraph(layout = 'kk') +
+  geom_edge_link(color = 'steelblue', show.legend = FALSE) +
+  geom_node_point(size = 3) +
+  theme_void() 
+```
+
+## Introduction to Graphs
+
+```{r}
+#| fig-width: 10
+#| fig-height: 4.5
+gr %>%
+  ggraph(layout = 'kk') +
+  geom_edge_link(aes(edge_alpha = 0.8), color = 'steelblue', show.legend = FALSE) +
+  geom_node_point(aes(color = group, size = size)) +
+  scale_color_manual(values = c("red", "green", "blue")) +
+  theme_void() 
+```
+
+
+## Introduction to Graphs
+
+### Graph Types:
+- **Directed**: Relationships have a direction (e.g., A → B).
+- **Undirected**: Relationships are bidirectional.
+- **Weighted**: Edges have weights (e.g., cost, distance).
+- **Unweighted**: Edges do not carry weights.
+
+---
+
+
+## Ways to Represent Graphs
+
+### Graph Representations
+1. **Edge List**: A list of node pairs connected by edges.
+2. **Adjacency Matrix**: Rows and columns represent nodes; cell values indicate edges.
+3. **Adjacency List**: A collection of lists where each list corresponds to a node and contains the nodes it is connected to via edges.
+
+and many more ...
+
+
+## Representations: Edge List
+
+::: columns 
+::: {.column width="30%"}
+::: {layout="[[-1], [1], [-1]]"}
+```r
+(A, B)
+(A, C)
+(B, D)
+(B, C)
+(A, E)
+```
+::: 
+:::
+
+::: {.column width="70%"}
+::: {layout="[[-1], [1], [-1]]"}
+```{r}
+edges <- data.frame(
+  from = c("A", "A", "B", "B", "E"),
+  to = c("B", "C", "D", "C", "A")
+)
+graph <- graph_from_data_frame(edges, directed = FALSE)
+ggraph(graph, layout = "kk") +
+  geom_edge_link(color = 'steelblue', show.legend = FALSE, linewidth = 2) +
+  geom_node_point(size = 15) +
+  geom_node_text(aes(label = name), color = "white") +
+  theme_void()
+```
+::: 
+:::
+:::
+
+
+
+
+
+## Representations: Adjacency Matrix
+
+
+::: columns 
+::: {.column width="30%"}
+::: {layout="[[-1], [1], [-1]]"}
+```r
+   A B C D E
+A  0 1 1 0 1
+B  1 0 1 1 0
+C  1 1 0 0 0
+D  0 1 0 0 0
+E  1 0 0 0 0
+```
+::: 
+:::
+
+::: {.column width="70%"}
+::: {layout="[[-1], [1], [-1]]"}
+```{r}
+edges <- data.frame(
+  from = c("A", "A", "B", "B", "E"),
+  to = c("B", "C", "D", "C", "A")
+)
+graph <- graph_from_data_frame(edges, directed = FALSE)
+ggraph(graph, layout = "kk") +
+  geom_edge_link(color = 'steelblue', show.legend = FALSE, linewidth = 2) +
+  geom_node_point(size = 15) +
+  geom_node_text(aes(label = name), color = "white") +
+  theme_void()
+```
+::: 
+:::
+:::
+
+
+
+
+## Representations: Adjacency List
+
+
+
+::: columns 
+::: {.column width="30%"}
+::: {layout="[[-1], [1], [-1]]"}
+```r
+A: B, C, E
+B: A, D, C
+C: A, B
+D: B
+E: A
+```
+::: 
+:::
+
+::: {.column width="70%"}
+::: {layout="[[-1], [1], [-1]]"}
+```{r}
+edges <- data.frame(
+  from = c("A", "A", "B", "B", "E"),
+  to = c("B", "C", "D", "C", "A")
+)
+graph <- graph_from_data_frame(edges, directed = FALSE)
+ggraph(graph, layout = "kk") +
+  geom_edge_link(color = 'steelblue', show.legend = FALSE, linewidth = 2) +
+  geom_node_point(size = 15) +
+  geom_node_text(aes(label = name), color = "white") +
+  theme_void()
+```
+::: 
+:::
+:::
+
+
+# Basics of tidygraph
+
+
+
+
+## What are tidygraph and ggraph?
+
+
+::: columns 
+::: {.column width="50%"}
+::: {layout="[[-1], [1], [-1]]"}
+- tidygraph is used for graph manipulation (built upon igraph).
+
+- ggraph is used for visualizing graphs created or manipulated using tidygraph.
+::: 
+:::
+
+::: {.column width="50%"}
+![https://www.data-imaginist.com/](imgs/img2.png)
+::: 
+:::
+
+
+
+
+## How tidygraph works {.smaller}
+
+
+::: columns 
+::: {.column width="30%"}
+<br>
+<br>
+
+tidygraph stores graph data using two tibbles:
+
+- Nodes tibble: Contains node attributes.  
+- Edges tibble: Contains edge attributes.
+:::
+
+::: {.column width="70%"}
+<br>
+```{r, echo = T}
+library(tidygraph)
+# Create a graph
+graph <- tbl_graph(
+  nodes = tibble(name = c("A", "B", "C")),
+  edges = tibble(from = c(1, 2, 3), to = c(2, 3, 1))
+)
+print(graph)
+```
+::: 
+:::
+
+
+## How to Create a Graph?  {.smaller}
+
+Two ways:
+
+1. `tbl_graph(nodes = ..., edges = ...)`: used when you have explicit data frames for nodes and edges.
+
+- Nodes: A data frame where each row represents a node, and columns may include attributes (e.g., name, type).
+
+- Edges: A data frame where each row represents a connection between nodes, typically with from and to columns to indicate relationships.
+
+
+```{r, echo = T,  style="font-size: 1.5em;"}
+library(tidygraph)
+nodes <- data.frame(name = c("A", "B", "C"), type = c("1", "1", "2"))
+edges <- data.frame(from = c(1, 2), to = c(2, 3))
+graph <- tbl_graph(nodes = nodes, edges = edges)
+```
+
+
+
+## How to Create a Graph? {.smaller}
+
+Two ways:
+
+2. `as_tbl_graph()`: from common graph structures like igraph objects, adjacency matrices, or edge lists. Very general, works with a lot of data types like data frames or matrices:
+
+```{r, echo = T, style="font-size: 1.5em;"}
+library(tidygraph)
+adj_matrix <- matrix(
+  c(0, 1, 0, 
+    1, 0, 1, 
+    0, 1, 0), nrow = 3, byrow = TRUE, 
+  dimnames = list(c("A", "B", "C"), c("A", "B", "C"))
+)
+graph <- as_tbl_graph(adj_matrix)
+```
+
+
+## Key Operations in tidygraph {.smaller}
+
+
+
+::: columns 
+::: {.column width="30%"}
+<br>
+<br>
+
+- `activate()`: Switch between node and edge context.
+
+- `filter()`: Subset nodes or edges.
+
+- `mutate()`: Add or modify attributes.
+:::
+
+::: {.column width="70%"}
+<br>
+```{r, echo = T}
+library(tidygraph)
+edges <- data.frame(
+  from = c("A", "A", "B", "B", "E"),
+  to = c("B", "C", "D", "C", "A")
+)
+graph <- as_tbl_graph(edges, directed = FALSE)
+print(graph)
+```
+::: 
+:::
+
+
+
+## Key Operations in tidygraph {.smaller}
+
+```{r}
+ggraph(graph, layout = "kk") +
+  geom_edge_link(color = 'steelblue', show.legend = FALSE) +
+  geom_node_point(size = 8) +
+  geom_node_text(aes(label = name), color = "white") +
+  theme_void()
+```
+
+## Key Operations in tidygraph {.smaller}
+
+::: columns 
+::: {.column width="50%"}
+```{r, echo = T}
+# Activate nodes
+g = graph %>%
+  activate(nodes) %>%
+  mutate(degree = as.factor(centrality_degree())) # Add node degree
+print(g)
+```
+:::
+::: {.column width="50%"}
+<br>
+```{r}
+ggraph(g, layout = "kk") +
+  geom_edge_link(size = 10, show.legend = FALSE) +
+  geom_node_point(aes(color = degree), size =15) +
+  geom_node_text(aes(label = name), size = 8) +
+  theme_void() +
+  theme(legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.position = "bottom")
+```
+::: 
+:::
+
+
+
+## Key Operations in tidygraph {.smaller}
+
+
+::: columns 
+::: {.column width="50%"}
+```{r, echo = T}
+# Add a new attribute to edges
+g = graph %>%
+  activate(edges) %>%
+  mutate(bridge = tidygraph::edge_is_bridge())
+print(g)
+```
+:::
+::: {.column width="50%"}
+<br>
+```{r}
+ggraph(g, layout = "kk") +
+  geom_edge_link(aes(color = bridge), linewidth = 3) +
+  geom_node_point(size = 15) +
+  geom_node_text(aes(label = name), size = 8) +
+  theme_void() +
+  theme(legend.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.position = "bottom")
+```
+::: 
+:::
+
+
+
+## Key Operations in tidygraph {.smaller}
+
+::: columns 
+::: {.column width="50%"}
+<br>
+```{r, echo = T}
+# Filter nodes with specific names
+graph %>%
+  activate(nodes) %>%
+  filter(name != "B")
+```
+:::
+::: {.column width="50%"}
+<br>
+```{r, echo = T}
+# Filter edges
+graph %>%
+  activate(edges) %>%
+  filter(from == 1)
+```
+::: 
+:::
+
+
+
+# Visualization with ggraph
+
+## What is ggraph?
+
+<br>
+
+ggraph provides an easy way to visualize graphs using intuitive functions and multiple layout options.
+
+- Supports layouts like tree, circular, and force-directed.
+- Seamlessly integrates with ggplot2.
+
+
+## Overview of Node Layers
+
+- Node layers in ggraph are used to represent the entities of a graph visually.
+- Common aesthetics include size (importance of nodes), color (group membership or categories), and shape (node type).
+- The `geom_node_point()` function is the primary method to plot nodes.
+
+## geom_node_point
+
+```{r, echo = T}
+library(ggraph)
+set.seed(7)
+graph <- sample_gnp(n = 10, p = 0.3)  # Random graph
+graph = as_tbl_graph(graph, directed = FALSE) 
+ggraph(graph) +
+  geom_node_point(size = 8, color = 'blue') 
+```
+
+
+## geom_node_point: aesthetics
+
+```{r, echo = T}
+gr <- graph %>% activate(nodes) %>%
+  mutate(group = as.factor(group_louvain()))
+ggraph(gr) +
+  geom_node_point(aes(color = group), size = 8) 
+```
+
+
+## Adding Node Labels
+
+```{r, echo = T}
+gr = graph %>% activate(nodes) %>%
+  mutate(name = LETTERS[1:10])
+ggraph(gr) +
+  geom_node_point(size = 8, color = 'blue') +
+  geom_node_text(aes(label = name), color = "white")
+```
+
+
+## Adding Node Labels: repel
+
+```{r, echo = T}
+gr = graph %>% activate(nodes) %>%
+  mutate(name = LETTERS[1:10])
+ggraph(gr) +
+  geom_node_point(size = 6, color = 'red') +
+  geom_node_text(aes(label = name), color = "black", repel = T)
+```
+
+
+## Overview of Edge Layers
+
+- Edges represent the connections or relationships between nodes in a graph. 
+
+- Edge layers in ggraph can visualize various aspects of relationships, such as strength, direction, or type through aesthetics like width, color, and transparency.
+
+- The geom_edge_link() function is the most commonly used layer for visualizing edges.
+
+
+## geom_edge_link
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') 
+```
+
+
+## geom_edge_link: Order Matters
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_node_point(size = 8, color = 'blue') +
+  geom_edge_link()
+```
+
+
+
+
+## geom_edge_link: aesthetics
+
+```{r, echo = T}
+gr <- graph %>% activate(edges) %>%
+  mutate(wt = rpois(n(), lambda = 1))
+ggraph(gr) +
+  geom_edge_link(aes(alpha = wt)) +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+
+## Edges in a Directed Graphs
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_edge_link(arrow = arrow(length = unit(5, 'mm'))) +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+## Edges in a Directed Graphs: end_cap
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_edge_link(arrow = arrow(length = unit(3, 'mm')),
+                               end_cap = circle(3, 'mm')) +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+
+## Other Kinds of Edges: arc
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_node_point(size = 8, color = 'blue') +
+  geom_edge_arc() +
+  theme_void()
+```
+
+
+## Other Kinds of Edges: bend
+
+```{r, echo = T}
+ggraph(graph) +
+  geom_node_point(size = 8, color = 'blue') +
+  geom_edge_bend() +
+  theme_void()
+```
+
+
+## Overview of Layouts in ggraph
+
+- Layouts determine the spatial arrangement of nodes and edges in a graph.
+
+- Choosing the right layout is essential for clarity and aesthetics.
+
+- ggraph supports a variety of layouts, including force-directed, circular, and hierarchical types.
+
+
+## Force-directed Layouts
+
+- Force-directed layouts, such as 'fr' (Fruchterman-Reingold) and 'kk' (Kamada-Kawai), simulate physical forces to position nodes.  
+
+- They are ideal for visualizing relationships dynamically.
+
+## Kamada-Kawai Layout
+
+```{r, echo = T}
+ggraph(graph, layout = "kk") +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+
+## Fruchterman-Reingold Layout
+
+```{r, echo = T}
+ggraph(graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+## Circular Layouts
+
+Circular layouts position nodes around a circle, making them suitable for cyclical or hierarchical relationships.
+
+```{r, echo = T}
+ggraph(graph, layout = "circle") +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+
+## Chord Diagrams
+
+Used to compare similarities between groups of data or within a dataset. 
+
+```{r, echo = T}
+ggraph(graph, layout = "linear", circular = T) +
+  geom_edge_arc() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+## Arc Diagrams
+
+Nodes are placed along a single line (a one-dimensional axis) and arcs are used to show connections between those nodes, useful in finding the co-occurrence within the data.
+
+```{r, echo = T}
+ggraph(graph, layout = "linear") +
+  geom_edge_arc() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+
+# An Example
+
+## nycflights Data
+
+```{r, echo = T}
+library(nycflights13)
+df = flights
+head(df)
+```
+
+
+## nycflights Data: Graph
+
+```{r, echo = T}
+gr = df %>% count(origin, dest) %>%
+  as_tbl_graph()
+gr
+```
+
+
+## nycflights Data: Simple Visualization
+
+
+```{r, echo = T}
+# base graph
+gr %>% ggraph() +
+  geom_edge_link() +
+  geom_node_point()
+```
+
+## nycflights Data: Layout
+
+```{r, echo = T}
+# adjust layout
+gr %>% ggraph(layout = "kk") +
+  geom_edge_link() +
+  geom_node_point()
+```
+
+## nycflights Data: In-Degree
+
+```{r, echo = T}
+# color nodes based on in-degree
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link() +
+  geom_node_point(aes(color = in_degree)) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom")
+```
+
+
+## nycflights Data: In-Degree
+
+```{r, echo = F}
+# color nodes based on in-degree
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link() +
+  geom_node_point(aes(color = in_degree)) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom")
+```
+
+
+
+
+## nycflights Data: Number of Flights
+
+
+```{r, echo = T}
+# add info on number of flights to edges + increase size
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 3) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom")
+```
+
+## nycflights Data: Number of Flights
+
+```{r, echo = F}
+# add info on number of flights to edges + increase size
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 3) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom")
+```
+
+## nycflights Data: Labels (1)
+
+```{r, echo = T}
+# add labels: repel
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 3) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  geom_node_text(aes(label = name), repel = T)
+```
+
+
+## nycflights Data: Labels (1)
+
+```{r, echo = F}
+# add labels: repel
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 3) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  geom_node_text(aes(label = name), repel = T)
+```
+
+
+## nycflights Data: Labels (2)
+
+
+```{r, echo = T}
+# add labels: inside points
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 6) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  geom_node_text(aes(label = name), size = 2, color = "white")
+```
+
+
+## nycflights Data: Labels (2)
+
+
+```{r, echo = F}
+# add labels: inside points
+gr %>%
+  activate(nodes) %>%
+  mutate(in_degree = as.factor(centrality_degree(mode = "in"))) %>% 
+  ggraph(layout = "kk") +
+  geom_edge_link(aes(alpha = n)) +
+  geom_node_point(aes(color = in_degree), size = 6) +
+  scale_color_manual(values = c("0" = "red", "1" = "lightblue", "2" = "steelblue", "3" = "blue")) +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  geom_node_text(aes(label = name), size = 2, color = "white")
+```
+
+
+# Trees in tidygraph
+
+
+::: columns 
+::: {.column width="60%"}
+<br>
+
+- A tree is a data structure used to represent hierarchical relationships.
+
+- Nodes connected by edges, and each node in the tree contains data and is connected to other nodes in a parent-child relationship. 
+
+:::
+::: {.column width="40%"}
+![https://en.wikipedia.org/wiki/Tree_%28abstract_data_type%](imgs/img3.png)
+
+::: 
+:::
+
+## Components of a Tree
+
+- Node: Represents an element or data point in the tree.
+- Edge: Represents the connection between two nodes.
+- Root: The topmost node in a tree, with no parent. All other nodes are descendants of this root.
+- Parent: A node that has one or more children.
+- Child: A node that is a descendant of another node.
+- Leaf: A node that does not have any children.
+- Subtree: A tree formed by a node and its descendants.
+
+
+
+
+
+
+## Trees in tidygraph
+
+```{r, echo = T}
+# Create a sample hierarchical graph
+graph <- data.frame(from = c("A", "A", "A", "B", "B", "C", "C", "C"),
+             to = c("B", "C", "I", "D", "E", "F", "G", "H"))
+graph <- as_tbl_graph(graph)
+print(graph)
+```
+
+
+## Trees in tidygraph: kk layout
+
+```{r, echo = T}
+ggraph(graph, layout = "kk") +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') +
+  theme_void()
+```
+
+
+## Creating a Tree Layout
+
+dendrogram layout arranges nodes and edges linearly in a hierarchical structure. The layout positions nodes based on their depth in the tree.
+
+```{r, echo = T}
+ggraph(graph, layout = 'tree') +
+  geom_edge_link() +
+  geom_node_point(size = 8, color = 'blue') +
+  geom_node_text(aes(label = name), color = "white") +
+  theme_void()
+```
+
+
+
+## Creating a Dendrogram Layout
+
+Dendrogram layouts are also very nice to show the output of hierarchical clustering
+
+```{r, echo = T}
+head(mtcars)
+```
+
+## Creating a Dendrogram Layout
+
+```{r, echo = T}
+hclust_gr = as_tbl_graph(hclust(dist(mtcars)))
+ggraph(hclust_gr, layout = 'dendrogram') +
+  geom_edge_link() +
+  geom_node_point(size = 3, color = 'blue') +
+  theme_void()
+```
+
+
+## Creating a Dendrogram Layout: Edges
+
+```{r, echo = T}
+hclust_gr = as_tbl_graph(hclust(dist(mtcars)))
+ggraph(hclust_gr, layout = 'dendrogram') +
+  geom_edge_elbow() +
+  geom_node_point(size = 3, color = 'blue') +
+  theme_void()
+```
+
+
+
+## Icicle Plots
+
+Nodes are represented as rectangles, with the area or position indicating relationships.
+
+```{r, echo = T}
+ggraph(graph, layout = 'partition') +
+  geom_node_tile(aes(fill = depth)) +
+  geom_node_text(aes(label = name), color = "white", size = 8) +
+  theme_void()
+```
+
+
+
+## Sunburst Plots
+
+
+```{r, echo = T}
+#| fig-width: 5
+#| fig-height: 5
+ggraph(graph, layout = 'partition', circular = TRUE) +
+  geom_node_arc_bar(aes(fill = depth)) +
+  geom_node_text(aes(label = name, angle = node_angle(x, y)),
+                 size = 5) +
+  theme_void()
+```
+
+
+## Circle Packs
+
+```{r, echo = T}
+#| fig-width: 5
+#| fig-height: 5
+ggraph(graph, layout = 'circlepack') +
+  geom_node_circle(aes(fill = depth)) +
+  theme_void()
+```
+
+
+
+## Tree Maps
+
+```{r, echo = T}
+ggraph(graph, layout = 'treemap') +
+  geom_node_tile(aes(fill = depth), size = 0.25) +
+  theme_void()
+```
+
+## Cactustree
+
+```{r, echo = T}
+
+ggraph(graph, layout = 'cactustree') + 
+  geom_node_circle(aes(fill = depth), size = 0.25) + 
+  coord_fixed() +
+  theme_void()
+```
+
+
+
+
+##  A Comparison
+
+```{r}
+library(gridExtra)
+# Dendrogram
+g1 = ggraph(graph, layout = 'dendrogram') +
+  geom_edge_link() +
+  geom_node_point() +
+  theme_void()
+# Icicle Plot
+g2 = ggraph(graph, layout = 'partition') +
+  geom_node_tile(aes(fill = depth)) +
+  theme_void()
+# Sunburst Plot
+g3 = ggraph(graph, layout = 'partition', circular = TRUE) +
+  geom_node_arc_bar(aes(fill = depth)) +
+  theme_void()
+g4 = ggraph(graph, layout = 'circlepack') +
+  geom_node_circle(aes(fill = depth)) +
+  theme_void()
+g5 = ggraph(graph, layout = 'treemap') +
+  geom_node_tile(aes(fill = depth), size = 0.25) +
+  theme_void()
+g6 = ggraph(graph, layout = 'cactustree') + 
+  geom_node_circle(aes(fill = depth), size = 0.25) + 
+  coord_fixed() +
+  theme_void()
+grid.arrange(g1, g2, g3, g4, g5, g6, nrow = 2)
+```
+
+
+
+
+# Thank You!
+
+Email: `naman.agr03@gmail.com`
+
+
+
+
+
+
+
+
+
